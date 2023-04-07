@@ -1,6 +1,6 @@
 <!-- eslint-disable vue/no-parsing-error -->
 <template>
-  <VueLoading :active="isLoading" loader="bars" color="#034D83" />
+  <LoadingView :active="isLoading" loader="bars" color="#034D83" />
   <!-- 2. 建立訂單(填寫資料) -->
   <UserCartStepComponent></UserCartStepComponent>
   <div>
@@ -141,73 +141,58 @@
           </div> -->
 </template>
 
-<script>
-import VueLoading from 'vue-loading-overlay'
-import 'vue-loading-overlay/dist/css/index.css'
-import cartStore from '../../store/UserCartStore'
-import { mapActions, mapState } from 'pinia'
+<script setup>
+import { cart } from '@/store'
 import UserCartStepComponent from '../../components/UserCart/UserCartStepComponent.vue'
-const { VITE_APP_URL, VITE_APP_PATH } = import.meta.env
+import { useRouter } from 'vue-router'
+import { onMounted, ref, inject } from 'vue'
+import { storeToRefs } from 'pinia'
 
-export default {
-  data () {
-    return {
-      form: {
-        user: {
-          name: '',
-          email: '',
-          tel: '',
-          address: '',
-          shipping: ''
-        },
-        message: ''
-      },
-      orders: []
-      // cart: []
-    }
+const router = useRouter()
+
+const { VITE_APP_URL, VITE_APP_PATH } = import.meta.env
+const cartStore = cart()
+const $http = inject('$http')
+const form = ref({
+  user: {
+    name: '',
+    email: '',
+    tel: '',
+    address: '',
+    shipping: ''
   },
-  components: {
-    UserCartStepComponent,
-    VueLoading
-  },
-  methods: {
-    // getCarts () {
-    //   this.$http.get(`${VITE_APP_URL}v2/api/${VITE_APP_PATH}/cart`)
-    //     .then(res => {
-    //       this.cart = res.data.data
-    //       console.log('購物車:', this.cart)
-    //     })
-    // },
-    getOrders () {
-      const url = `${VITE_APP_URL}api/${VITE_APP_PATH}/orders`
-      this.$http.get(url)
-        .then(res => {
-          console.log(res.data.orders)
-          this.orders = res.data.orders
-        })
-    },
-    createOrder () {
-      const url = `${VITE_APP_URL}api/${VITE_APP_PATH}/order`
-      const order = this.form
-      this.$http.post(url, { data: order }).then((response) => {
-        console.log(response)
-        if (response.data.success) {
-          this.$router.push(`/order_payment/${response.data.orderId}`)
-          this.$refs.form.resetForm()
-        }
-        this.getCarts()
-      }).catch((err) => {
-        alert(err.data.message)
-      })
-    },
-    ...mapActions(cartStore, ['addToCart', 'getCarts', 'updateCartItem', 'deleteItem', 'deleteAllItem', 'toThousands'])
-  },
-  computed: {
-    ...mapState(cartStore, ['cartData', 'cartsLength', 'isLoading'])
-  },
-  mounted () {
-    this.getCarts()
-  }
+  message: ''
+})
+const orders = ref([])
+
+// eslint-disable-next-line no-unused-vars
+function getOrders () {
+  const url = `${VITE_APP_URL}api/${VITE_APP_PATH}/orders`
+  $http.get(url)
+    .then(res => {
+      console.log(res.data.orders)
+      orders.value = res.data.orders
+    })
 }
+function createOrder () {
+  const url = `${VITE_APP_URL}api/${VITE_APP_PATH}/order`
+  const order = form.value
+  $http.post(url, { data: order }).then((response) => {
+    console.log(response)
+    if (response.data.success) {
+      router.push(`/order_payment/${response.data.orderId}`)
+      form.value.resetForm()
+    }
+    getCarts()
+  }).catch((err) => {
+    alert(err.data.message)
+  })
+}
+const { getCarts, toThousands } = cartStore
+const { cartData, isLoading } = storeToRefs(cartStore)
+
+onMounted(() => {
+  getCarts()
+})
 
 </script>

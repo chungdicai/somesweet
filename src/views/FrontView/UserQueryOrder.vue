@@ -55,11 +55,11 @@
     </div>
   </div>
   </div>
-  <VueLoading :active="isLoading"></VueLoading>
+  <LoadingView :active="isLoading"></LoadingView>
 
 </template>
 
-<script>import VueLoading from 'vue-loading-overlay'
+<script>import LoadingView from 'vue-loading-overlay'
 import 'vue-loading-overlay/dist/css/index.css'
 const { VITE_APP_URL, VITE_APP_PATH } = import.meta.env
 export default {
@@ -76,7 +76,7 @@ export default {
     }
   },
   components: {
-    VueLoading
+    LoadingView
   },
   methods: {
     getCarts () {

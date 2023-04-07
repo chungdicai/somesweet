@@ -1,22 +1,23 @@
 <template>
-  <VueLoading :active="isLoading" loader="bars" color="#034D83" />
+  <LoadingView :active="isLoading" loader="bars" color="#034D83" />
   <GoTop></GoTop>
   <div class="container-fluid g-0 ">
     <div class="card border-0 rounded-0 bg-dark text-white mb-5">
-      <div class="filters" style="
-                                                          height: 200px;
-                                                          background-image: url(https://storage.googleapis.com/vue-course-api.appspot.com/jiangs2023/1677550181847.jpg?GoogleAccessId=firebase-adminsdk-zzty7%40vue-course-api.iam.gserviceaccount.com&Expires=1742169600&Signature=qQpOKJlmAipjojZQ7imN6J6MiWWuxRYaXwXr6MdPijbdIRTjWFssPopTl5JN%2FjlUul1ccEWNcVdj2qhABmca1qXPqK9FnT1jz92lk4l7rOonpF8%2F7lVw8i%2BDI3KhGnoYIBBfmyQyRsPKI%2B8mHHakw9uegGVuY%2BXfxGLcBuYGsxhNU9UTy1fj4%2Fc07ANvqKpCrE66j9O2KJE%2B5VlGoCK8pKmBlmMjyLUXNSmESrPdR9696BuSHjvmYXdBWtAC6ODZLqXHs7P7vskYx3e23oggxpMBveQQCm8u3tqgCu6kjOE7EYtYucOEmah6Nsbuw6pUMfIhrj5xbebroqyayFKz8g%3D%3D);
-                                                          background-size: cover;
-                                                          background-position: center center;
-                                                          background-attachment: fixed;
-                                                        " />
+      <div class="filters"
+        style="
+        height: 200px;
+        background-image: url(https://storage.googleapis.com/vue-course-api.appspot.com/jiangs2023/1677550181847.jpg?GoogleAccessId=firebase-adminsdk-zzty7%40vue-course-api.iam.gserviceaccount.com&Expires=1742169600&Signature=qQpOKJlmAipjojZQ7imN6J6MiWWuxRYaXwXr6MdPijbdIRTjWFssPopTl5JN%2FjlUul1ccEWNcVdj2qhABmca1qXPqK9FnT1jz92lk4l7rOonpF8%2F7lVw8i%2BDI3KhGnoYIBBfmyQyRsPKI%2B8mHHakw9uegGVuY%2BXfxGLcBuYGsxhNU9UTy1fj4%2Fc07ANvqKpCrE66j9O2KJE%2B5VlGoCK8pKmBlmMjyLUXNSmESrPdR9696BuSHjvmYXdBWtAC6ODZLqXHs7P7vskYx3e23oggxpMBveQQCm8u3tqgCu6kjOE7EYtYucOEmah6Nsbuw6pUMfIhrj5xbebroqyayFKz8g%3D%3D);
+        background-size: cover;
+        background-position: center center;
+        background-attachment: fixed;
+      "></div>
       <div class="
-                                                          card-img-overlay
-                                                          d-flex
-                                                          flex-column
-                                                          justify-content-center
-                                                          align-item-center
-                                                        ">
+          card-img-overlay
+          d-flex
+          flex-column
+          justify-content-center
+          align-item-center
+        ">
         <h1 class="fs-3 card-title text-center fw-bold">
           <p class="fs-m fw-bold mb-2">所有甜點</p>
           <p class="logoText fs-sm p-0 m-0">SOME SWEET <span class="fs-xs fw-lighter">/am</span></p>
@@ -75,7 +76,7 @@
             <!-- 搜尋 -->
             <div class="input-group  ms-auto mb-4">
               <input type="search" class="form-control border-primary p-2" @keyup.enter="searchProduct"
-                placeholder="請輸入商品名稱" v-model.trim="this.searchValue">
+                placeholder="請輸入商品名稱" v-model.trim="searchValue">
               <button type="button" class="btn btn-primary px-5 px-lg-3" @click="searchProduct"><i class="bi bi-search"></i></button>
             </div>
           </div>
@@ -122,9 +123,9 @@
                 </small>
 
               </div>
-              <button type="buttom" class="btn btn-primary mt-5 " :disabled="this.status.loadingItem === product.id"
+              <button type="buttom" class="btn btn-primary mt-5 " :disabled="status.loadingItem === product.id"
                 @click="() => addToCart(product.id)">
-                <div v-if="this.status.loadingItem === product.id" class="spinner-border text-light spinner-border-sm"
+                <div v-if="status.loadingItem === product.id" class="spinner-border text-light spinner-border-sm"
                   role="status">
                 </div>
                 加入購物車
@@ -143,198 +144,148 @@
   </div>
 </template>
 
-<script>
-import VueLoading from 'vue-loading-overlay'
-import 'vue-loading-overlay/dist/css/index.css'
-import cartStore from '../../store/UserCartStore.js'
-import { mapActions, mapState } from 'pinia'
+<script setup>
+import { onMounted, ref, watch, computed, inject } from 'vue'
+import { cart } from '@/store'
 import storageMethods from '../../methods/LocalStorage'
 import GoTop from '../../components/GoTop.vue'
-// import PaginationComponent from '../../components/PaginationComponent.vue'
-const { VITE_APP_URL, VITE_APP_PATH } = import.meta.env
-export default {
-  components: {
-    GoTop,
-    VueLoading
-    // PaginationComponent
-  },
-  data () {
-    return {
-      productsAll: [],
-      products: [],
-      product: {},
-      pagination: {},
-      status: {
-        loadingItem: '' // 對應品項 id
-      },
-      isLoading: false,
-      categories: [], // 產品的分類項目
-      selectCategory: '', // 選取分類項目按鈕後，selectCategory = item，用 computed 做切換
-      myFavorite: storageMethods.get() || [], // 我的最愛，有品項的話就用 storageMethods.get() 取到內容，沒有的話就傳空陣列
-      searchValue: ''
-    }
-  },
-  methods: {
+import { useRoute } from 'vue-router'
 
-    getAllProducts (page) {
-      this.isLoading = true
-      this.$http.get(`${VITE_APP_URL}api/${VITE_APP_PATH}/products/all`)
-        .then(res => {
-          console.log(res)
-          this.productsAll = res.data.products
-          console.log(this.productsAll)
-          this.getCategories()
-          const { selectCategory } = this.$route.params
-          console.log(selectCategory)
-          this.isLoading = false
-          if (selectCategory) {
-            this.selectCategory = selectCategory
-          }
-          if (this.selectCategory !== '') {
-            this.pagination = {}
-          } else {
-            this.getProducts(page)
-          }
-        })
-    },
-    // api 有 page 的
-    getProducts (page = 1) {
-      this.$http.get(`${VITE_APP_URL}api/${VITE_APP_PATH}/products?page=${page}`).then((res) => {
-        // 點擊分頁時滾到上方
-        window.scrollTo(0, 0)
-        // 先把 products pagination資料存起來
-        const { products, pagination } = res.data
-        this.products = products
-        this.pagination = pagination
-        console.log(this.products, this.pagination)
-      })
-    },
-    getCategories () {
-      // Vue 3 雙向綁定 Proxy(new Proxy 物件)
-      // new Set
-      const categories = new Set() // 建在全新的空的物件上
-      console.log(categories)
-      this.productsAll.forEach((item) => {
-        categories.add(item.category) // 把品項加入 categories
-        // console.log(this.categories)
-      })
-      this.categories = [...categories] // 這裡要轉成純陣列的形式存回去  所以這裡要轉為 Proxy
-      console.log(this.categories)
-    },
-    addMyFavorite (item) {
-      // this.myFavorite.push(item.id);
-      // this.myFavorite.includes(item.id) 原本是寫 item.id 存 id 就好，但後面要做其他事情可以先存整個物件
-      if (this.myFavorite.includes(item.id)) {
-        // 這裡意思是 如果我的最愛已經有這個品項，再按一次就代表取消
-        this.myFavorite.splice(this.myFavorite.indexOf(item.id), 1)
+const $http = inject('$http')
+const $swal = inject('$Swal')
+// 取的store(pinia)實例
+const cartStore = cart()
+
+const { VITE_APP_URL, VITE_APP_PATH } = import.meta.env
+const productsAll = ref([])
+const pagination = ref({})
+const isLoading = ref(false)
+const categories = ref([])
+const selectCategory = ref('') // 選取分類項目按鈕後，selectCategory = item，用 computed 做切換
+const myFavorite = ref([]) //  我的最愛，有品項的話就用 storageMethods.get() 取到內容，沒有的話就傳空陣列
+const searchValue = ref('')
+const status = ref({})
+
+// 獲取響應的值
+const { addToCart } = cartStore
+const route = useRoute()
+
+// api 有 page 的
+function getProducts (page = 1) {
+  $http.get(`${VITE_APP_URL}api/${VITE_APP_PATH}/products?page=${page}`).then((res) => {
+    // 點擊分頁時滾到上方
+    window.scrollTo(0, 0)
+    // 先把 products pagination資料存起來
+    const { products, pagination } = res.data
+    products.value = products
+    pagination.value = pagination
+    console.log(products.value, pagination.value)
+  })
+}
+function getCategories () {
+  // Vue 3 雙向綁定 Proxy(new Proxy 物件)
+  // new Set
+  const categories = new Set() // 建在全新的空的物件上
+  console.log(categories)
+  productsAll.value.forEach((item) => {
+    categories.add(item.category) // 把品項加入 categories
+    // console.log(this.categories)
+  })
+  categories.value = [...categories] // 這裡要轉成純陣列的形式存回去  所以這裡要轉為 Proxy
+  console.log(categories.value)
+}
+
+function getAllProducts (page) {
+  isLoading.value = true
+  $http.get(`${VITE_APP_URL}api/${VITE_APP_PATH}/products/all`)
+    .then(res => {
+      console.log(res)
+      productsAll.value = res.data.products
+      console.log(productsAll.value)
+      getCategories()
+      const { selectCategory } = route.params
+      console.log(selectCategory)
+      isLoading.value = false
+      if (selectCategory) {
+        selectCategory.value = selectCategory
+      }
+      if (selectCategory !== '') {
+        pagination.value = {}
       } else {
-        this.myFavorite.push(item.id) // 否則沒有此品項 就把品項加入
-        this.favShowAlert()
+        getProducts(page)
       }
-    },
-    searchProduct () {
-      // 取得全部產品
-      const url = `${VITE_APP_URL}api/${VITE_APP_PATH}/products/all`
-      this.$http
-        .get(url)
-        .then((res) => {
-          this.productsAll = res.data.products
-          // 關鍵字搜尋
-          this.productsAll = this.productsAll.filter(item => item.title.trim().match(this.searchValue))
-          console.log(this.productsAll)
-          this.searchValue = ''
-        })
-    },
-    toThousands (num) {
-      const n = parseInt(num, 10)
-      return `${n.toFixed(0).replace(/./g, (c, i, a) => (i && c !== '.' && ((a.length - i) % 3 === 0) ? `, ${c}`.replace(/\s/g, '') : c))}`
-    },
-    // showAlert () {
-    //   // Use sweetalert2
-    //   this.$swal.fire({
-    //     position: 'center',
-    //     icon: 'success',
-    //     title: '已加入購物車',
-    //     showConfirmButton: false,
-    //     timer: 2000,
-    //     iconColor: '#236F6B'
-    //   })
-    // },
-    favShowAlert () {
-      // Use sweetalert2
-      // this.$swal.fire({
-      //   position: 'center',
-      //   icon: 'success',
-      //   title: '已加入收藏',
-      //   showConfirmButton: false,
-      //   timer: 2000,
-      //   iconColor: '#236F6B'
-      // })
-      const Toast = this.$swal.mixin({
-        toast: true,
-        position: 'top-end',
-        showConfirmButton: false,
-        timer: 1500,
-        timerProgressBar: true,
-        didOpen: (toast) => {
-          toast.addEventListener('mouseenter', this.$swal.stopTimer)
-          toast.addEventListener('mouseleave', this.$swal.resumeTimer)
-        }
-      })
-      Toast.fire({
-        icon: 'success',
-        title: '已加入蒐藏清單'
-      })
-    },
-    ...mapActions(cartStore, ['getCarts', 'addToCart', 'showAlert'])
-    // addToCart (id, qty = 1) {
-    //   console.log(id, qty)
-    //   // 當沒有傳入該參數時，會使用預設值
-    //   const url = `${VITE_APP_URL}api/${VITE_APP_PATH}/cart`
-    //   this.status.loadingItem = id // 加入購物車之後 spinner 開啟
-    //   const data = {
-    //     product_id: id,
-    //     qty: 1
-    //   }
-    //   this.$http.post(url, { data })
-    //     .then(res => {
-    //       this.status.loadingItem = '' // 加入購物車之後 spinner 關掉
-    //       console.log('加入購物車', res.data)
-    //     })
-    // }
-  },
-  computed: {
-    ...mapState(cartStore, ['cartData', 'cartsLength']),
-    // 產生新的資料集 (裡面的值產生變化之後，資料重新運算)
-    filterProducts () {
-      return this.productsAll.filter((item) => item.category.match(this.selectCategory))
-      // 如果選到的產品品項是一樣的就呈現
-      // 監聽 this.products  this.selectCategory
-      // 空字串，或任何符合結果都會是 “真值”
-    }
-  },
-  watch: {
-    selectCategory (newValue, preValue) {
-      if (newValue === '' || preValue === '') {
-        console.log(newValue, preValue)
-        this.getAllProducts()
-      }
-    },
-    // 監聽特定值
-    myFavorite: {
-      // 深層監聽
-      handler () {
-        storageMethods.save(this.myFavorite) // 把資料儲存
-      },
-      deep: true
-    }
-  },
-  mounted () {
-    // 進頁面先抓產品資料
-    // this.getProducts()
-    this.getAllProducts()
+    })
+}
+
+function addMyFavorite (item) {
+  // this.myFavorite.push(item.id);
+  // this.myFavorite.includes(item.id) 原本是寫 item.id 存 id 就好，但後面要做其他事情可以先存整個物件
+  if (myFavorite.value.includes(item.id)) {
+    // 這裡意思是 如果我的最愛已經有這個品項，再按一次就代表取消
+    myFavorite.value.splice(myFavorite.value.indexOf(item.id), 1)
+  } else {
+    myFavorite.value.push(item.id) // 否則沒有此品項 就把品項加入
+    favShowAlert()
   }
 }
+function searchProduct () {
+  // 取得全部產品
+  const url = `${VITE_APP_URL}api/${VITE_APP_PATH}/products/all`
+  $http.get(url)
+    .then((res) => {
+      productsAll.value = res.data.products
+      // 關鍵字搜尋
+      productsAll.value = productsAll.value.filter(item => item.title.trim().match(searchValue.value))
+      console.log(productsAll.value)
+      searchValue.value = ''
+    })
+}
+function toThousands (num) {
+  const n = parseInt(num, 10)
+  return `${n.toFixed(0).replace(/./g, (c, i, a) => (i && c !== '.' && ((a.length - i) % 3 === 0) ? `, ${c}`.replace(/\s/g, '') : c))}`
+}
+
+function favShowAlert () {
+  const Toast = $swal.mixin({
+    toast: true,
+    position: 'top-end',
+    showConfirmButton: false,
+    timer: 1500,
+    timerProgressBar: true,
+    didOpen: (toast) => {
+      toast.addEventListener('mouseenter', $swal.stopTimer)
+
+      toast.addEventListener('mouseleave', $swal.resumeTimer)
+    }
+  })
+  Toast.fire({
+    icon: 'success',
+    title: '已加入蒐藏清單'
+  })
+}
+
+// 產生新的資料集 (裡面的值產生變化之後，資料重新運算)
+const filterProducts = computed(() => {
+  // 如果選到的產品品項是一樣的就呈現
+  // 監聽 this.products  this.selectCategory
+  // 空字串，或任何符合結果都會是 “真值”
+  return productsAll.value.filter((item) => item.category.match(selectCategory.value))
+})
+watch(selectCategory, (newValue, preValue) => {
+  if (newValue === '' || preValue === '') {
+    console.log(newValue, preValue)
+    getAllProducts()
+  }
+})
+
+watch(myFavorite, () => {
+  storageMethods.save(myFavorite.value) // 把資料儲存
+}, { deep: true })
+
+onMounted(() => {
+  myFavorite.value = storageMethods.get() || []
+  getAllProducts()
+})
 </script>
 
 <style scoped lang="scss">

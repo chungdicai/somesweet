@@ -170,120 +170,111 @@
 
 </template>
 
-<script>
-import cartStore from '../../store/UserCartStore.js'
-import { mapActions, mapState } from 'pinia'
+<script setup>
+import { cart } from '@/store'
 import storageMethods from '../../methods/LocalStorage.js'
 import RecommendSwiper from '../../components/UserHome/RecommendProductsSwiper.vue'
+import { onMounted, ref, inject, computed, watch } from 'vue'
 
+import { useRouter } from 'vue-router'
+const router = useRouter()
 const { VITE_APP_URL, VITE_APP_PATH } = import.meta.env
+const $http = inject('$http')
+const cartStore = cart()
 
-export default {
-  data () {
-    return {
-      products: [], // getProducts
-      product: {},
-      pagination: {},
-      status: {
-        loadingItem: '' // 對應品項 id
-      },
-      categories: [], // 產品的分類項目
-      selectCategory: '', // 選取分類項目按鈕後，selectCategory = item，用 computed 做切換
-      myFavorite: storageMethods.get() || [], // 我的最愛，有品項的話就用 storageMethods.get() 取到內容，沒有的話就傳空陣列
-      favorites: []
+const products = ref([])
+// eslint-disable-next-line no-unused-vars
+const product = ref({})
+// eslint-disable-next-line no-unused-vars
+const pagination = ref({})
+const status = ref({ loadingItem: '' })
+// eslint-disable-next-line no-unused-vars
+const categories = ref([]) // 產品的分類項目
+const selectCategory = ref('') // 選取分類項目按鈕後，selectCategory = item，用 computed 做切換
+const myFavorite = ref([]) // 我的最愛，有品項的話就用 storageMethods.get() 取到內容，沒有的話就傳空陣列
+const favorites = ref([])
+const isLoading = ref(false)
+
+function getProducts () {
+  const url = `${VITE_APP_URL}api/${VITE_APP_PATH}/products/all`
+  isLoading.value = true
+  $http.get(url).then((response) => {
+    products.value = response.data.products
+    isLoading.value = false
+    if (response.data.success) {
+      products.value = response.data.products
+      getFavorites()
     }
-  },
-  components: {
-    RecommendSwiper
-  },
-  methods: {
-    getProducts () {
-      const url = `${VITE_APP_URL}api/${VITE_APP_PATH}/products/all`
-      this.isLoading = true
-      this.$http.get(url).then((response) => {
-        this.products = response.data.products
-        this.isLoading = false
-        if (response.data.success) {
-          this.products = response.data.products
-          this.getFavorites()
-        }
-      })
-    },
-    getFavorites () {
-      this.favorites = [] // 先給我的最愛空陣列
-      const favoriteIdArr = JSON.parse(localStorage.getItem('myFavorite')) || [] // 把 hexFavorite 欄位從 localStorage 取出時會是字串，所以要再用 JSON.parse 轉為物件
-      // 加到 favorites 陣列裡
-      for (let i = 0; i < this.products.length; i += 1) {
-        for (let k = 0; k < favoriteIdArr.length; k += 1) {
-          if (this.products[i].id === favoriteIdArr[k]) {
-            this.favorites.push(this.products[i])
-          }
-        }
+  })
+}
+function getFavorites () {
+  favorites.value = [] // 先給我的最愛空陣列
+  const favoriteIdArr = JSON.parse(localStorage.getItem('myFavorite')) || [] // 把 hexFavorite 欄位從 localStorage 取出時會是字串，所以要再用 JSON.parse 轉為物件
+  // 加到 favorites 陣列裡
+  for (let i = 0; i < products.value.length; i += 1) {
+    for (let k = 0; k < favoriteIdArr.length; k += 1) {
+      if (products.value[i].id === favoriteIdArr[k]) {
+        favorites.value.push(products.value[i])
       }
-    },
-    addMyFavorite (item) {
-      // this.myFavorite.push(item.id);
-      // this.myFavorite.includes(item.id) 原本是寫 item.id 存 id 就好，但後面要做其他事情可以先存整個物件
-      if (this.myFavorite.includes(item.id)) {
-        // 這裡意思是 如果我的最愛已經有這個品項，再按一次就代表取消
-        this.myFavorite.splice(this.myFavorite.indexOf(item.id), 1)
-        this.getFavorites()
-        this.getProducts()
-      } else {
-        this.myFavorite.push(item.id) // 否則沒有此品項 就把品項加入
-      }
-    },
-    getCategories () {
-      // Vue 3 雙向綁定 Proxy(new Proxy 物件)
-      // new Set
-      // 這裡 Set 的 categories 屬於類陣列
-      const categories = new Set() // 建在全新的空的物件上
-      this.products.forEach((item) => {
-        categories.add(item.category) // 把品項加入 categories
-      })
-      this.categories = [...categories] // 這裡要轉成純陣列的形式存回去  所以這裡要轉為 Proxy 的 categories
-    },
-    getProduct (id) {
-      this.$router.push(`/product/${id}`)
-    },
-    addCart (id) {
-      const url = `${VITE_APP_URL}api/${VITE_APP_PATH}/cart`
-      this.status.loadingItem = id
-      const cart = {
-        product_id: id,
-        qty: 1
-      }
-      this.$http.post(url, { data: cart }).then(() => {
-        this.status.loadingItem = ''
-      })
-    },
-    ...mapActions(cartStore, ['getCarts', 'addToCart', 'showAlert'])
-  },
-  watch: {
-    // 監聽特定值
-    myFavorite: {
-      // 深層監聽
-      handler () {
-        storageMethods.save(this.myFavorite) // 把資料儲存
-      },
-      deep: true
     }
-  },
-  computed: {
-    ...mapState(cartStore, ['cartData', 'cartsLength']),
-    // 產生新的資料集 (裡面的值產生變化之後，資料重新運算)
-    filterProducts () {
-      return this.products.filter((item) => item.category.match(this.selectCategory))
-      // 如果選到的產品品項是一樣的就呈現
-      // 監聽 this.products  this.selectCategory
-      // 空字串，或任何符合結果都會是 “真值”
-    }
-  },
-  created () {
-    // 改為 mounted
-    this.getProducts()
   }
 }
+
+function addMyFavorite (item) {
+  // this.myFavorite.push(item.id);
+  // this.myFavorite.includes(item.id) 原本是寫 item.id 存 id 就好，但後面要做其他事情可以先存整個物件
+  if (myFavorite.value.includes(item.id)) {
+    // 這裡意思是 如果我的最愛已經有這個品項，再按一次就代表取消
+    myFavorite.value.splice(myFavorite.value.indexOf(item.id), 1)
+    getFavorites()
+    getProducts()
+  } else {
+    myFavorite.value.push(item.id) // 否則沒有此品項 就把品項加入
+  }
+}
+
+// eslint-disable-next-line no-unused-vars
+function getCategories () {
+  // Vue 3 雙向綁定 Proxy(new Proxy 物件)
+  // new Set
+  // 這裡 Set 的 categories 屬於類陣列
+  const categories = new Set() // 建在全新的空的物件上
+  products.value.forEach((item) => {
+    categories.add(item.category) // 把品項加入 categories
+  })
+  categories.value = [...categories] // 這裡要轉成純陣列的形式存回去  所以這裡要轉為 Proxy 的 categories
+}
+
+// eslint-disable-next-line no-unused-vars
+function getProduct (id) {
+  router.push(`/product/${id}`)
+}
+// eslint-disable-next-line no-unused-vars
+function addCart (id) {
+  const url = `${VITE_APP_URL}api/${VITE_APP_PATH}/cart`
+  status.value.loadingItem = id
+  const cart = {
+    product_id: id,
+    qty: 1
+  }
+  $http.post(url, { data: cart }).then(() => {
+    status.value.loadingItem = ''
+  })
+}
+
+const { addToCart } = cartStore
+watch(myFavorite, () => {
+  storageMethods.save(myFavorite.value)
+}, { deep: true })
+
+// eslint-disable-next-line no-unused-vars
+const filterProducts = computed(() => {
+  return products.value.filter((item) => item.category.match(selectCategory.value))
+})
+onMounted(() => {
+  getProducts()
+  myFavorite.value = storageMethods.get() || []
+})
 </script>
 
 <style scoped lang="scss">

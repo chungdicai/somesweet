@@ -37,35 +37,26 @@
   </div>
 </template>
 
-<script>
-import cartStore from '../../store/UserCartStore'
-import { mapActions, mapState } from 'pinia'
+<script setup>
+import { onMounted, ref, toRefs } from 'vue'
+import { cart } from '@/store'
 import Modal from 'bootstrap/js/dist/modal'
 
-export default {
-  props: ['product'],
-  data () {
-    return {
-      modal: ''
-    }
-  },
-  methods: {
-    showModal () {
-      this.modal.show()
-    },
-    hideModal () {
-      this.modal.hide()
-    },
-    ...mapActions(cartStore, ['addToCart', 'getCarts', 'updateCartItem', 'deleteItem', 'deleteAllItem', 'createOrder', 'getOrders', 'setModal'])
-  },
-  computed: {
-    ...mapState(cartStore, ['cartData', 'cartsLength'])
-  },
-  mounted () {
-    // this.modal = new Modal(this.$refs.delmodal)
-    this.setModal(new Modal(this.$refs.delmodal))
+const props = defineProps({
+  product: {
+    type: null
   }
+})
+const { product } = toRefs(props)
 
-}
+// 取的store(pinia)實例
+const cartStore = cart()
 
+const { deleteItem, deleteAllItem, setModal } = cartStore
+
+const delmodal = ref(null)
+
+onMounted(() => {
+  setModal(new Modal(delmodal.value))
+})
 </script>

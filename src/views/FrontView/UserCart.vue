@@ -1,5 +1,5 @@
 <template>
-  <VueLoading :active="isLoading" loader="bars" color="#034D83" />
+  <LoadingView :active="isLoading" loader="bars" color="#034D83" />
   <!-- 1. 購物車(確認訂單) -->
   <UserCartStepComponent v-if="cartsLength > 0"></UserCartStepComponent>
   <!-- 購物車列表沒東西 -->
@@ -137,86 +137,72 @@
   <DelModal :product="tempProduct" :cartData="tempCart" ref="delModal" id="delModal" @del-product="deleteItem" />
 </template>
 
-<script>
-import VueLoading from 'vue-loading-overlay'
-import 'vue-loading-overlay/dist/css/index.css'
+<script setup>
 import DelModal from '../../components/UserCart/UserCartDelModal.vue'
-import cartStore from '../../store/UserCartStore'
-import { mapActions, mapState } from 'pinia'
 import UserCartStepComponent from '../../components/UserCart/UserCartStepComponent.vue'
+import { cart } from '@/store'
+import { onMounted, ref, inject } from 'vue'
+import { useRouter } from 'vue-router'
+import { storeToRefs } from 'pinia'
+
+const $http = inject('$http')
+const router = useRouter()
+const cartStore = cart()
 
 const { VITE_APP_URL, VITE_APP_PATH } = import.meta.env
+const products = ref([])
+const tempProduct = ref([])
+const tempCart = ref({})
+// eslint-disable-next-line camelcase
+const coupon_code = ref('')
+// eslint-disable-next-line no-unused-vars
+const id = ref('')
 
-export default {
-  data () {
-    return {
-      products: [],
-      tempProduct: {},
-      tempCart: {},
-      // cart: {},
-      // productId: ''
-      coupon_code: '',
-      id: ''
-      // isLoading: false
-    }
-  },
-  components: {
-    UserCartStepComponent,
-    DelModal,
-    VueLoading
-  },
-  methods: {
-    getProducts () {
-      // this.isLoading = true
-      this.$http.get(`${VITE_APP_URL}api/${VITE_APP_PATH}/products/all`)
-        .then(res => {
-          console.log('產品列表:', res.data.products)
-          this.products = res.data.products
-          // this.isLoading = false
-        })
-    },
-    getProduct (id) {
-      this.$router.push(`/product/${id}`)
-    },
-    openDelProductModal (item) {
-      this.tempProduct = { ...item }
-      console.log(this.tempProduct)
-      this.modal.show()
-    },
-    openAllDelProductModal (item) {
-      // 清空 tempProduct
-      this.tempProduct = {}
-      this.tempCart = { ...item }
-      console.log(this.cartData)
-      this.modal.show()
-    },
-    // 套用優惠券
-    addCouponCode () {
-      const url = `${VITE_APP_URL}api/${VITE_APP_PATH}/coupon`
-      const coupon = {
-        code: this.coupon_code
-      }
-      this.$http
-        .post(url, { data: coupon })
-        .then((response) => {
-          console.log(response)
-          this.coupon_code = ''
-          this.getCarts()
-        })
-    },
-    ...mapActions(cartStore, ['addToCart', 'getCarts', 'updateCartItem', 'deleteItem', 'deleteAllItem', 'createOrder', 'getOrders', 'setModal', 'toThousands'])
-
-  },
-  computed: {
-    ...mapState(cartStore, ['cartData', 'cartsLength', 'modal', 'isLoading'])
-  },
-  mounted () {
-    this.getProducts()
-    this.getCarts()
-    // this.getOrders();
-  }
-
+function getProducts () {
+  $http.get(`${VITE_APP_URL}api/${VITE_APP_PATH}/products/all`)
+    .then(res => {
+      console.log('產品列表:', res.data.products)
+      products.value = res.data.products
+    })
 }
+function getProduct (id) {
+  router.push(`/product/${id}`)
+}
+function openDelProductModal (item) {
+  tempProduct.value = { ...item }
+  console.log(tempProduct)
+  modal.value.show()
+}
+function openAllDelProductModal (item) {
+  // 清空 tempProduct
+  tempProduct.value = {}
+  tempCart.value = { ...item }
+  console.log(cartData.value)
+  modal.value.show()
+}
+
+function addCouponCode () {
+  const url = `${VITE_APP_URL}api/${VITE_APP_PATH}/coupon`
+  const coupon = {
+    // eslint-disable-next-line camelcase
+    code: coupon_code.value
+  }
+  $http
+    .post(url, { data: coupon })
+    .then((response) => {
+      console.log(response)
+      // eslint-disable-next-line camelcase
+      coupon_code.value = ''
+      getCarts()
+    })
+}
+const { getCarts, updateCartItem, deleteItem, toThousands } = cartStore
+const { cartData, cartsLength, modal, isLoading } = storeToRefs(cartStore)
+onMounted(() => {
+  getProducts()
+  getCarts()
+})
+
 </script>
 
 <style scoped>

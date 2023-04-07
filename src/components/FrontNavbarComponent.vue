@@ -258,67 +258,50 @@
   </nav>
 </template>
 
-<script>
-import cartStore from '../store/UserCartStore'
-import { mapActions, mapState } from 'pinia'
+<script setup>
 
 import Offcanvas from 'bootstrap/js/dist/offcanvas'
+import { cart } from '../store'
+import { storeToRefs } from 'pinia'
+import { onMounted, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+
+// 取的store(pinia)實例
+const cartStore = cart()
+
+// 獲取響應的值
+const { cartData, cartsLength } = storeToRefs(cartStore)
+
+// 獲取方法
+const { getCarts, updateCartItem, deleteItem, toThousands } = cartStore
 // const { VITE_APP_URL, VITE_APP_PATH } = import.meta.env
 
-export default {
-  data () {
-    return {
-      // cartData: {
-      //   carts: []
-      // },
-      offcanvas: {}
-      // cartsLength: 0
-    }
-  },
-  methods: {
-    // getCarts () {
-    //   this.isLoading = true
-    //   this.$http
-    //     .get(`${VITE_APP_URL}api/${VITE_APP_PATH}/cart`)
-    //     .then((res) => {
-    //       this.cartData = res.data.data
-    //       this.cartsLength = res.data.data.carts.length // 購物車 icon 判斷
-    //       console.log(this.cartData, this.cartsLength)
-    //     })
-    // },
-    getProduct (id) {
-      this.$router.push(`/product/${id}`)
-    },
-    updateCartNum () {
-      const url = `${process.env.VUE_APP_API}/api/${process.env.VUE_APP_PATH}/cart`
-      this.isLoading = true
-      this.$http.get(url).then((res) => {
-        // 清單合併成一個加總數目的品項
-        this.cartsLength = res.data.data.carts.length // 購物車 icon 判斷
-        this.isLoading = false
-      })
-    },
-    ...mapActions(cartStore, ['addToCart', 'getCarts', 'updateCartItem', 'deleteItem', 'deleteAllItem', 'createOrder', 'getOrders', 'setModal', 'toThousands']),
-    showOffcanvas () {
-      this.offcanvas.show()
-    },
-    hideOffcanvas () {
-      this.offcanvas.hide()
-    }
-  },
-  computed: {
-    ...mapState(cartStore, ['cartData', 'cartsLength', 'modal'])
-  },
-  watch: {
-    $route () {
-      window.location.reload() // 其中 this.$router.go(0) 为刷新页面 但是不支援 iOS 系統
-    }
-  },
-  mounted () {
-    this.offcanvas = new Offcanvas(this.$refs.offcanvas, { backdrop: true })
-    this.getCarts()
-  }
+const offcanvas = ref(null)
+let offCanvas = null
+const router = useRouter()
+
+function getProduct (id) {
+  router.push(`/product/${id}`)
 }
+
+function showOffcanvas () {
+  offCanvas.show()
+}
+function hideOffcanvas () {
+  offCanvas.hide()
+}
+
+const route = useRoute()
+
+watch(route, () => {
+  // window.location.reload()
+})
+
+onMounted(() => {
+  offCanvas = new Offcanvas(offcanvas.value, { backdrop: true })
+  console.log(offCanvas)
+  getCarts()
+})
 
 </script>
 

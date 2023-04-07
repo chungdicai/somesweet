@@ -1,6 +1,6 @@
 <!-- eslint-disable no-undef -->
 <template>
-  <VueLoading :active="isLoading" loader="bars" color="#034D83" />
+  <LoadingView :active="isLoading" loader="bars" color="#034D83" />
   <div class="banner bg-cover">
     <div class="container ">
       <div class="row">
@@ -164,110 +164,90 @@
   <UserProdectDetailLooklike></UserProdectDetailLooklike>
 </template>
 
-<script>
-import VueLoading from 'vue-loading-overlay'
-import 'vue-loading-overlay/dist/css/index.css'
+<script setup>
+import { cart } from '@/store'
+import { onMounted, ref, inject, watch } from 'vue'
+import { storeToRefs } from 'pinia'
+import { useRoute } from 'vue-router'
+
 import storageMethods from '../../methods/LocalStorage'
-import cartStore from '../../store/UserCartStore'
 import UserProdectDetailLooklike from '../../components/UserProduct/UserProdectDetailLooklike.vue'
-import { mapActions, mapState } from 'pinia'
-const { VITE_APP_URL, VITE_APP_PATH } = import.meta.env
 
-export default {
-  /* eslint-disable camelcase */
-  data () {
-    return {
-      isLoading: false,
-      product: [], // 單一產品資訊
-      id: '', // 單一產品的 id
-      productImg: '',
-      qty: 1, // 畫面上的輸入欄位顯示的預設值
-      myFavorite: storageMethods.get() || [] // 我的最愛，有品項的話就用 storageMethods.get() 取到內容，沒有的話就傳空陣列
-    }
-  },
-  components: {
-    VueLoading,
-    UserProdectDetailLooklike
-  },
-  methods: {
+const $http = inject('$http')
+const $swal = inject('$Swal')
+const route = useRoute()
 
-    getProduct () {
-      // $route 物件取值
-      // $router 方法
-      this.isLoading = true
-      this.$http.get(`${VITE_APP_URL}api/${VITE_APP_PATH}/product/${this.id}`)
-        .then(res => {
-          console.log(res.data)
-          const { product } = res.data
-          this.product = product
-          this.productImg = this.product.imageUrl
-          this.isLoading = false
-          console.log(this.product)
-        })
-    },
-    ...mapActions(cartStore, ['addToCart', 'getCarts']),
-    // getCarts () {
-    //   this.$http.get(`${VITE_APP_URL}api/${VITE_APP_PATH}/cart`)
-    //     .then(res => {
-    //       console.log('購物車:', res.data)
-    //       this.cart = res.data.data
-    //     })
-    // },
-    changeImg (img) {
-      this.productImg = img
-    },
-    addMyFavorite (item) {
-      // this.myFavorite.push(item.id);
-      // this.myFavorite.includes(item.id) 原本是寫 item.id 存 id 就好，但後面要做其他事情可以先存整個物件
-      if (this.myFavorite.includes(item.id)) {
-        // 這裡意思是 如果我的最愛已經有這個品項，再按一次就代表取消
-        this.myFavorite.splice(this.myFavorite.indexOf(item.id), 1)
-      } else {
-        this.myFavorite.push(item.id) // 否則沒有此品項 就把品項加入
-        this.favShowAlert()
-      }
-    },
-    favShowAlert () {
-      const Toast = this.$swal.mixin({
-        toast: true,
-        position: 'top-end',
-        showConfirmButton: false,
-        timer: 1500,
-        timerProgressBar: true,
-        didOpen: (toast) => {
-          toast.addEventListener('mouseenter', this.$swal.stopTimer)
-          toast.addEventListener('mouseleave', this.$swal.resumeTimer)
-        }
-      })
-      Toast.fire({
-        icon: 'success',
-        title: '已加入蒐藏清單'
-      })
-    }
-  },
-  watch: {
-    // 監聽特定值
-    myFavorite: {
-      // 深層監聽
-      handler () {
-        storageMethods.save(this.myFavorite) // 把資料儲存
-      },
-      deep: true
-    }
-  },
-  computed: {
-    ...mapState(cartStore, ['cartData', 'cartsLength'])
-  },
-  created () {
-    this.id = this.$route.params.id
-    console.log(this.$route.params.id)
+const { VITE_APP_URL, VITE_APP_PATH } = import.meta.env3
 
-    // this.getCarts()
-  },
-  mounted () {
-    this.getProduct()
+const cartStore = cart()
+
+const product = ref([])
+const id = ref('')
+const productImg = ref('')
+const qty = ref(1)
+const myFavorite = ref([])
+
+function getProduct () {
+  // $route 物件取值
+  // $router 方法
+  isLoading.value = true
+  $http.get(`${VITE_APP_URL}api/${VITE_APP_PATH}/product/${id.value}`)
+    .then(res => {
+      console.log(res.data)
+      const { product } = res.data
+      product.value = product
+      productImg.value = product.imageUrl
+      isLoading.value = false
+      console.log(product.value)
+    })
+}
+
+function changeImg (img) {
+  productImg.value = img
+}
+const { addToCart } = cartStore
+function addMyFavorite (item) {
+  // this.myFavorite.push(item.id);
+  // this.myFavorite.includes(item.id) 原本是寫 item.id 存 id 就好，但後面要做其他事情可以先存整個物件
+  if (myFavorite.value.includes(item.id)) {
+    // 這裡意思是 如果我的最愛已經有這個品項，再按一次就代表取消
+    myFavorite.value.splice(myFavorite.value.indexOf(item.id), 1)
+  } else {
+    myFavorite.value.push(item.id) // 否則沒有此品項 就把品項加入
+    favShowAlert()
   }
 }
+
+function favShowAlert () {
+  const Toast = $swal.mixin({
+    toast: true,
+    position: 'top-end',
+    showConfirmButton: false,
+    timer: 1500,
+    timerProgressBar: true,
+    didOpen: (toast) => {
+      toast.addEventListener('mouseenter', $swal.stopTimer)
+      toast.addEventListener('mouseleave', $swal.resumeTimer)
+    }
+  })
+  Toast.fire({
+    icon: 'success',
+    title: '已加入蒐藏清單'
+  })
+}
+
+watch(myFavorite, () => {
+  storageMethods.save(myFavorite.value) // 把資料儲存
+}, { deep: true })
+
+const { isLoading } = storeToRefs(cartStore)
+
+onMounted(() => {
+  id.value = route.params.id
+  console.log(route.params.id)
+  getProduct()
+})
+
 </script>
 
 <style scoped>
